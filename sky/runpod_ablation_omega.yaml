@@ -6,15 +6,8 @@ name: wonntext-omega
 
 resources:
   cloud: runpod
-  image_id: docker:theoryzhenkov/wonntext-runtime:latest
   accelerators: L4:1
   disk_size: 100
-
-# Provide the Docker Hub password at launch time:
-#   --env SKYPILOT_DOCKER_PASSWORD="$DOCKERHUB_TOKEN"
-envs:
-  SKYPILOT_DOCKER_SERVER: docker.io
-  SKYPILOT_DOCKER_USERNAME: theoryzhenkov
 
 workdir: .
 
@@ -22,7 +15,8 @@ setup: |
   set -e
   cd "$SKYP_TASK_WORKDIR"
 
-  # torch is already present in the pre-baked image.
+  # Install dependencies. The default SkyPilot image needs torch from PyPI.
+  pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
   pip install --no-cache-dir -r sky/requirements-runtime.txt
 
   # Prepare WikiText-2 BPE dataset.
