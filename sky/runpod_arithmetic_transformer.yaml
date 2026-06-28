@@ -1,0 +1,39 @@
+# Fine-tune the best Transformer baseline checkpoint on two-digit addition.
+
+name: arithmetic-transformer
+
+resources:
+  cloud: runpod
+  accelerators: L4:1
+  disk_size: 100
+
+workdir: .
+
+setup: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+
+  # Install dependencies. The default SkyPilot image needs torch from PyPI.
+  pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
+  pip install --no-cache-dir -r sky/requirements-runtime.txt
+
+run: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+  PYTHONPATH=src python -m wonntext.train_arithmetic \
+      --data_dir data/arithmetic \
+      --checkpoint runs/wonntext/transformer_baseline/final.pt \
+      --model transformer \
+      --d_model 232 \
+      --nhead 8 \
+      --num_layers 1 \
+      --d_ff 464 \
+      --epochs 100 \
+      --batchsize 64 \
+      --eval_batchsize 256 \
+      --lr 1e-4 \
+      --clip_grad_norm 1.0 \
+      --eval_freq 10 \
+      --device auto \
+      --save_dir runs/arithmetic \
+      --exp_name transformer_arithmetic

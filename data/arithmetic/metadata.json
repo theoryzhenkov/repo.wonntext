@@ -1,0 +1,10 @@
+{
+  "vocab_size": 10000,
+  "pad_token_id": 0,
+  "mask_token_id": 1,
+  "seq_len": 9,
+  "digits": 2,
+  "train_size": 6480,
+  "valid_size": 810,
+  "test_size": 810
+}

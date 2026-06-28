@@ -1,0 +1,6 @@
+{
+  "pad_token_id": 0,
+  "mask_token_id": 1,
+  "unk_token_id": 2,
+  "vocab_size": 10000
+}
