@@ -5,7 +5,7 @@ name: wonntext-causal
 resources:
   cloud: runpod
   # Replace owner/repo with your GitHub repo name once the image is pushed.
-  image_id: docker:YOUR_DOCKERHUB_USERNAME/wonntext-runtime:latest
+  image_id: docker:theoryzhenkov/wonntext-runtime:latest
   accelerators: L4:1
   disk_size: 100
 

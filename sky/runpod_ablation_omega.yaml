@@ -6,7 +6,7 @@ name: wonntext-omega
 
 resources:
   cloud: runpod
-  image_id: docker:YOUR_DOCKERHUB_USERNAME/wonntext-runtime:latest
+  image_id: docker:theoryzhenkov/wonntext-runtime:latest
   accelerators: L4:1
   disk_size: 100
 
