@@ -10,6 +10,12 @@ resources:
   accelerators: L4:1
   disk_size: 100
 
+# Provide the Docker Hub password at launch time:
+#   --env SKYPILOT_DOCKER_PASSWORD="$DOCKERHUB_TOKEN"
+envs:
+  SKYPILOT_DOCKER_SERVER: docker.io
+  SKYPILOT_DOCKER_USERNAME: theoryzhenkov
+
 workdir: .
 
 setup: |
