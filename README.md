@@ -110,18 +110,36 @@ Launches use the pre-baked runtime image (see below). The first time, make sure 
 ### Build the pre-baked image on GitHub Actions
 
 The workflow in `.github/workflows/build-image.yml` builds and pushes the image
-to the GitHub Container Registry (`ghcr.io`). Secrets needed:
+to Docker Hub. Secrets needed:
 
-- `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` — used only to pull the public
-  `runpod/pytorch` base image during the build (avoids Docker Hub rate limits).
-- `GITHUB_TOKEN` — provided automatically by GitHub Actions; used to push to GHCR.
+- `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` — used to pull the public
+  `runpod/pytorch` base image during the build (avoids Docker Hub rate limits) and
+  to push the final image to Docker Hub.
 
 The resulting image is public by default, so RunPod can pull it without extra
 credentials. Update the `image_id` placeholders in `sky/*.yaml` to:
 
 ```yaml
-image_id: docker:ghcr.io/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/wonntext-runtime:latest
+image_id: docker:YOUR_DOCKERHUB_USERNAME/wonntext-runtime:latest
 ```
+
+#### Authenticating Docker Hub pulls on RunPod (optional)
+
+If you hit Docker Hub rate limits, authenticate pulls in one of two ways:
+
+1. **RunPod console (easiest):** add your Docker Hub credentials in
+   **RunPod settings → Container Registry Auth**. RunPod then uses them for every
+   pod it starts, including SkyPilot clusters.
+
+2. **Per-launch via SkyPilot CLI:** pass `--env` flags with your Docker Hub
+   credentials when launching:
+
+   ```bash
+   uv run --group cloud sky launch -c wonntext-omega sky/runpod_ablation_omega.yaml \
+     --env SKYPILOT_DOCKER_SERVER=docker.io \
+     --env SKYPILOT_DOCKER_USERNAME="$DOCKERHUB_USERNAME" \
+     --env SKYPILOT_DOCKER_PASSWORD="$DOCKERHUB_TOKEN"
+   ```
 
 ## Tests
 
