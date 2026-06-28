@@ -18,9 +18,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv to a system path so SkyPilot can find it without re-downloading.
+# The install script puts binaries in $HOME/.local/bin.
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && mv /root/.cargo/bin/uv /usr/local/bin/uv \
-    && rm -rf /root/.cargo
+    && mkdir -p /usr/local/bin \
+    && cp /root/.local/bin/uv /usr/local/bin/uv \
+    && rm -rf /root/.local/bin /root/.cargo
 
 # Pre-create the SkyPilot runtime and install Ray. This is the slow part of the
 # normal bootstrap; pre-installing it here lets SkyPilot skip it at launch time.
