@@ -1,0 +1,42 @@
+# direnv / nix
+.direnv/
+result
+
+# jj
+.jj/
+
+# secrets
+.env
+.age-key
+
+# editor
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.ty_cache/
+dist/
+build/
+
+# training artifacts
+runs/
+*.pt
+*.pth
+checkpoints/
+
+# prepared datasets
+data/wikitext*/
+data/wikitext_*/

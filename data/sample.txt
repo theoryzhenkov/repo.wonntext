@@ -1,0 +1,7 @@
+Winfree oscillatory neural networks model computation through the collective
+evolution of phase oscillators on a toroidal state space. Each oscillator has a
+phase and a frequency.  Couplings between oscillators drive phases toward
+synchrony.  In this text denoising task, discrete symbols are embedded as
+frequencies, random phases are initialised, and bidirectional attention supplies
+the coupling field.  A masked token is just another vocabulary entry; the model
+must recover the original symbol from the final phase at every position.

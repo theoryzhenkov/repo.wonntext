@@ -1,0 +1,39 @@
+# Pre-baked image for running wonntext on RunPod via SkyPilot.
+#
+# Build and push via GitHub Actions (see .github/workflows/build-image.yml)
+# or locally on an x86_64 machine:
+#
+#   docker build -f sky/Dockerfile.wonntext -t <user>/wonntext-runtime:latest .
+#   docker push <user>/wonntext-runtime:latest
+
+FROM runpod/pytorch:1.0.7-cu1281-torch291-ubuntu2204
+
+# System packages SkyPilot expects to exist.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        openssh-server \
+        rsync \
+        curl \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv to a system path so SkyPilot can find it without re-downloading.
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.cargo/bin/uv /usr/local/bin/uv \
+    && rm -rf /root/.cargo
+
+# Pre-create the SkyPilot runtime and install Ray. This is the slow part of the
+# normal bootstrap; pre-installing it here lets SkyPilot skip it at launch time.
+RUN uv venv --seed /root/skypilot-runtime --python "$(which python)" \
+    && VIRTUAL_ENV=/root/skypilot-runtime uv pip install -U \
+        "ray[default]==2.9.3" \
+        "pydantic-core==2.41.1" \
+        "click<8.3.0"
+
+# Install the project runtime/data dependencies into the base conda environment.
+# torch is already present in the runpod/pytorch image, so we do not list it.
+COPY sky/requirements-runtime.txt /tmp/requirements-runtime.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-runtime.txt
+
+# SkyPilot syncs the working directory here at runtime.
+WORKDIR /root/sky_workdir

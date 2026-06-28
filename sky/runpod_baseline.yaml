@@ -1,0 +1,44 @@
+# SkyPilot task for training the Transformer baseline on WikiText-2 using RunPod.
+# Same setup as runpod_wikitext.yaml, but uses the Transformer architecture.
+
+name: wonntext-baseline
+
+resources:
+  cloud: runpod
+  # Replace owner/repo with your GitHub repo name once the image is pushed.
+  image_id: docker:ghcr.io/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/wonntext-runtime:latest
+  accelerators: L4:1
+  disk_size: 100
+
+workdir: .
+
+setup: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+
+  # torch is already present in the pre-baked image.
+  pip install --no-cache-dir -r sky/requirements-runtime.txt
+
+  # Prepare WikiText-2 BPE dataset.
+  python scripts/prepare_wikitext.py \
+      --out_dir "$HOME/wikitext_data" \
+      --vocab_size 10000
+
+run: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+  PYTHONPATH=src python -m wonntext.train \
+      --model transformer \
+      --data_dir "$HOME/wikitext_data" \
+      --seq_len 256 \
+      --batchsize 32 \
+      --eval_batchsize 32 \
+      --d_model 232 \
+      --nhead 8 \
+      --num_layers 1 \
+      --epochs 50 \
+      --lr 1e-3 \
+      --clip_grad_norm 1.0 \
+      --eval_freq 1 \
+      --device auto \
+      --exp_name transformer_baseline

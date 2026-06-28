@@ -1,0 +1,7 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY.
+_commit: v0.2.0
+_src_path: git@github.com:theoryzhenkov/repo_template.python.git
+package_name: app
+project_description: ''
+project_name: ''
+python_version: '3.14'
