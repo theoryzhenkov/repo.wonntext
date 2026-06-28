@@ -17,6 +17,11 @@ setup: |
   pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
   pip install --no-cache-dir -r sky/requirements-runtime.txt
 
+  # Generate the two-digit arithmetic dataset on the node.
+  python scripts/prepare_arithmetic.py \
+      --out_dir data/arithmetic \
+      --tokenizer_path assets/wikitext/tokenizer.json
+
 run: |
   set -e
   cd "$SKYP_TASK_WORKDIR"
