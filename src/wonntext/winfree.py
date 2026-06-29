@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint
 
+from wonntext.layers import RMSNorm
 from wonntext.utils import wrap_pm_pi
 
 
@@ -33,7 +34,7 @@ class SequenceAttention(nn.Module):
         heads: int = 8,
         rope: bool = True,
         causal: bool = False,
-        qkv_bias: bool = True,
+        qkv_bias: bool = False,
         attn_drop: float = 0.0,
         proj_drop: float = 0.0,
         rope_base: float = 10000.0,
@@ -53,7 +54,7 @@ class SequenceAttention(nn.Module):
         self.rope_base = float(rope_base)
 
         self.W_qkv = nn.Linear(self.ch, 3 * self.ch, bias=qkv_bias)
-        self.W_o = nn.Linear(self.ch, self.ch, bias=True)
+        self.W_o = nn.Linear(self.ch, self.ch, bias=False)
 
     @staticmethod
     def _rotate_half(x: torch.Tensor) -> torch.Tensor:
@@ -272,7 +273,7 @@ class WinfreeTextLayer(nn.Module):
 
         self.i_func = TokenwiseSingleIFunc(ch=self.ch, hidden_ratio=self.hidden_ratio)
 
-        self.norm = nn.LayerNorm(self.ch)
+        self.norm = RMSNorm(self.ch)
         self.coupling = nn.Sequential(
             SequenceAttention(
                 ch=self.ch, heads=self.heads, rope=rope, causal=causal
