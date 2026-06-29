@@ -1,0 +1,110 @@
+[
+  {
+    "name": "wonn_2M_s0",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model wonn --ch 688 --L 1 --T 8 --seed 0 --exp_name wonn_2M_s0"
+  },
+  {
+    "name": "universal_2M_s0",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model universal --dim 400 --depth 8 --seed 0 --exp_name universal_2M_s0"
+  },
+  {
+    "name": "classical_2M_s0",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model classical --dim 400 --depth 8 --seed 0 --exp_name classical_2M_s0"
+  },
+  {
+    "name": "wonn_2M_s1",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model wonn --ch 688 --L 1 --T 8 --seed 1 --exp_name wonn_2M_s1"
+  },
+  {
+    "name": "universal_2M_s1",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model universal --dim 400 --depth 8 --seed 1 --exp_name universal_2M_s1"
+  },
+  {
+    "name": "classical_2M_s1",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model classical --dim 400 --depth 8 --seed 1 --exp_name classical_2M_s1"
+  },
+  {
+    "name": "wonn_2M_s2",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model wonn --ch 688 --L 1 --T 8 --seed 2 --exp_name wonn_2M_s2"
+  },
+  {
+    "name": "universal_2M_s2",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model universal --dim 400 --depth 8 --seed 2 --exp_name universal_2M_s2"
+  },
+  {
+    "name": "classical_2M_s2",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model classical --dim 400 --depth 8 --seed 2 --exp_name classical_2M_s2"
+  },
+  {
+    "name": "wonn_5M_s0",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model wonn --ch 1104 --L 1 --T 8 --seed 0 --exp_name wonn_5M_s0"
+  },
+  {
+    "name": "universal_5M_s0",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model universal --dim 640 --depth 8 --seed 0 --exp_name universal_5M_s0"
+  },
+  {
+    "name": "classical_5M_s0",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model classical --dim 640 --depth 8 --seed 0 --exp_name classical_5M_s0"
+  },
+  {
+    "name": "wonn_5M_s1",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model wonn --ch 1104 --L 1 --T 8 --seed 1 --exp_name wonn_5M_s1"
+  },
+  {
+    "name": "universal_5M_s1",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model universal --dim 640 --depth 8 --seed 1 --exp_name universal_5M_s1"
+  },
+  {
+    "name": "classical_5M_s1",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model classical --dim 640 --depth 8 --seed 1 --exp_name classical_5M_s1"
+  },
+  {
+    "name": "wonn_5M_s2",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model wonn --ch 1104 --L 1 --T 8 --seed 2 --exp_name wonn_5M_s2"
+  },
+  {
+    "name": "universal_5M_s2",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model universal --dim 640 --depth 8 --seed 2 --exp_name universal_5M_s2"
+  },
+  {
+    "name": "classical_5M_s2",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model classical --dim 640 --depth 8 --seed 2 --exp_name classical_5M_s2"
+  },
+  {
+    "name": "wonn_10M_s0",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model wonn --ch 1568 --L 1 --T 8 --seed 0 --exp_name wonn_10M_s0"
+  },
+  {
+    "name": "universal_10M_s0",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model universal --dim 912 --depth 8 --seed 0 --exp_name universal_10M_s0"
+  },
+  {
+    "name": "classical_10M_s0",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model classical --dim 912 --depth 8 --seed 0 --exp_name classical_10M_s0"
+  },
+  {
+    "name": "wonn_10M_s1",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model wonn --ch 1568 --L 1 --T 8 --seed 1 --exp_name wonn_10M_s1"
+  },
+  {
+    "name": "universal_10M_s1",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model universal --dim 912 --depth 8 --seed 1 --exp_name universal_10M_s1"
+  },
+  {
+    "name": "classical_10M_s1",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model classical --dim 912 --depth 8 --seed 1 --exp_name classical_10M_s1"
+  },
+  {
+    "name": "wonn_10M_s2",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model wonn --ch 1568 --L 1 --T 8 --seed 2 --exp_name wonn_10M_s2"
+  },
+  {
+    "name": "universal_10M_s2",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model universal --dim 912 --depth 8 --seed 2 --exp_name universal_10M_s2"
+  },
+  {
+    "name": "classical_10M_s2",
+    "cmd": "PYTHONPATH=src python -m wonntext.train_math --data_dir data/math --heads 8 --steps 20000 --optimizer muon --lr 0.02 --batch_size 512 --eval_every 1000 --amp false --save_dir runs/math --model classical --dim 912 --depth 8 --seed 2 --exp_name classical_10M_s2"
+  }
+]
