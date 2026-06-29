@@ -46,9 +46,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--winfree_mode",
         type=str,
-        choices=["recurrent", "predictor_corrector", "parallel_scan", "parallel_scan_refined"],
+        choices=[
+            "recurrent",
+            "predictor_corrector",
+            "parallel_scan",
+            "parallel_scan_refined",
+            "lazy_coupling",
+        ],
         default="recurrent",
         help="Winfree layer forward mode (WONN only).",
+    )
+    parser.add_argument(
+        "--lazy_k",
+        type=int,
+        default=2,
+        help="lazy_coupling: refresh the attention field every k steps (WONN only).",
     )
     parser.add_argument("--clip_grad_norm", type=float, default=1.0)
 
@@ -284,6 +296,7 @@ def main() -> None:
             mask_token_id=mask_token_id,
             grad_checkpoint=args.grad_checkpoint,
             winfree_mode=args.winfree_mode,
+            lazy_k=args.lazy_k,
         ).to(device)
 
     if args.checkpoint is not None:

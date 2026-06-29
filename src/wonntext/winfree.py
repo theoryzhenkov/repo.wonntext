@@ -362,6 +362,59 @@ class WinfreeTextLayer(nn.Module):
 
         return theta, thetas, es
 
+    def _forward_lazy_coupling(
+        self,
+        theta: torch.Tensor,
+        omega: torch.Tensor,
+        T: int,
+        gamma: torch.Tensor,
+        mask: torch.Tensor | None,
+        lazy_k: int,
+        return_thetas: bool,
+        return_es: bool,
+    ) -> tuple[
+        torch.Tensor,
+        list[torch.Tensor] | None,
+        list[torch.Tensor] | None,
+    ]:
+        """Multirate Winfree: recompute the expensive attention coupling field
+        only every ``lazy_k`` steps and reuse the cached field in between.
+
+        The phase still advances every step (cheap sin/cos + elementwise), but
+        the slow-varying influence field ``I(sin(theta))`` is refreshed lazily.
+        This cuts full attention passes from ``T`` to ``ceil(T / lazy_k)`` per
+        layer. ``lazy_k = 1`` recovers the exact recurrent dynamics.
+        """
+        thetas: list[torch.Tensor] | None = [] if return_thetas else None
+        es: list[torch.Tensor] | None = [] if return_es else None
+        if return_es and es is not None:
+            es.append(torch.zeros(theta.shape[0], device=theta.device, dtype=theta.dtype))
+
+        theta = wrap_pm_pi(theta)
+        k = max(1, int(lazy_k))
+        field: torch.Tensor | None = None
+
+        for t in range(int(T)):
+            if t % k == 0:
+                # Refresh the cached coupling field (the expensive attention).
+                influence = torch.sin(theta)
+                field = self.coupling[0](influence, mask=mask)
+                field = self._apply_norm(field)
+                field = self.coupling[2](field)
+
+            assert field is not None
+            sensitivity = torch.cos(theta)
+            dtheta = omega + sensitivity * field
+            theta = wrap_pm_pi(theta + gamma * dtheta)
+
+            if return_thetas and thetas is not None:
+                thetas.append(theta)
+            if return_es and es is not None:
+                influence = torch.sin(theta)
+                es.append((-(influence * field)).reshape(theta.shape[0], -1).sum(dim=-1))
+
+        return theta, thetas, es
+
     def _forward_parallel_scan(
         self,
         theta: torch.Tensor,
@@ -424,6 +477,7 @@ class WinfreeTextLayer(nn.Module):
         pred_scale: float = 3.0,
         t_pred: int = 2,
         t_corr: int = 3,
+        lazy_k: int = 2,
     ) -> tuple[
         torch.Tensor,
         list[torch.Tensor] | None,
@@ -439,6 +493,18 @@ class WinfreeTextLayer(nn.Module):
                 refine=(mode == "parallel_scan_refined"),
             )
             return result, None, None
+
+        if mode == "lazy_coupling":
+            return self._forward_lazy_coupling(
+                theta=theta,
+                omega=omega,
+                T=T,
+                gamma=gamma,
+                mask=mask,
+                lazy_k=lazy_k,
+                return_thetas=return_thetas,
+                return_es=return_es,
+            )
 
         if mode == "predictor_corrector":
             return self._forward_predictor_corrector(

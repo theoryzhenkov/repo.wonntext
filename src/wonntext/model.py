@@ -36,6 +36,7 @@ class WONNText(nn.Module):
         mask_token_id: int = -1,
         grad_checkpoint: bool = False,
         winfree_mode: str = "recurrent",
+        lazy_k: int = 2,
     ) -> None:
         super().__init__()
 
@@ -88,6 +89,7 @@ class WONNText(nn.Module):
 
         self.grad_checkpoint = bool(grad_checkpoint)
         self.winfree_mode = str(winfree_mode)
+        self.lazy_k = int(lazy_k)
 
         self._init_weights()
 
@@ -157,6 +159,7 @@ class WONNText(nn.Module):
                 return_es=return_es,
                 grad_checkpoint=self.grad_checkpoint,
                 mode=self.winfree_mode,
+                lazy_k=self.lazy_k,
             )
 
             if return_thetas and thetas is not None:
