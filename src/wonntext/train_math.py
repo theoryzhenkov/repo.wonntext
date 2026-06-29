@@ -16,6 +16,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from wonntext.baseline_transformer import TransformerLM, UniversalTransformerLM
+from wonntext.hier_model import HierarchicalWONNText
 from wonntext.math_data import OnlineMathDataset
 from wonntext.model import WONNText
 from wonntext.muon import build_optimizer
@@ -25,7 +26,9 @@ from wonntext.utils import seed_everything, str2bool
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Online +/- arithmetic training.")
     p.add_argument("--data_dir", default="data/math")
-    p.add_argument("--model", choices=["wonn", "classical", "universal"], required=True)
+    p.add_argument(
+        "--model", choices=["wonn", "wonn_hier", "classical", "universal"], required=True
+    )
     p.add_argument("--exp_name", default="math")
     p.add_argument("--save_dir", default="runs/math")
     p.add_argument("--seed", type=int, default=0)
@@ -50,6 +53,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ch", type=int, default=256)
     p.add_argument("--L", type=int, default=1)
     p.add_argument("--T", type=int, default=8)
+    # Hierarchical WONN (fast/slow): n_cycles*tau = total fast steps; `segments`
+    # deep-supervision refinement passes; readout in {fast, slow, sum}.
+    p.add_argument("--n_cycles", type=int, default=2)
+    p.add_argument("--tau", type=int, default=4)
+    p.add_argument("--segments", type=int, default=4)
+    p.add_argument("--slow_scale", type=float, default=0.25)
+    p.add_argument("--readout", choices=["fast", "slow", "sum"], default="slow")
     # transformers
     p.add_argument("--dim", type=int, default=256)
     p.add_argument("--depth", type=int, default=8,
@@ -66,6 +76,12 @@ def build_model(args: argparse.Namespace, meta: dict) -> torch.nn.Module:
         return WONNText(
             vocab_size=v, ch=args.ch, max_seq_len=meta["seq_len"], L=args.L,
             T=args.T, heads=args.heads, mask_token_id=mask_id,
+        )
+    if args.model == "wonn_hier":
+        return HierarchicalWONNText(
+            vocab_size=v, ch=args.ch, max_seq_len=meta["seq_len"], heads=args.heads,
+            n_cycles=args.n_cycles, tau=args.tau, segments=args.segments,
+            slow_scale=args.slow_scale, readout=args.readout, mask_token_id=mask_id,
         )
     cls = TransformerLM if args.model == "classical" else UniversalTransformerLM
     depth_kw = "n_layers" if args.model == "classical" else "n_steps"
@@ -116,7 +132,7 @@ def main() -> None:
         "cuda" if (args.device == "auto" and torch.cuda.is_available()) else
         ("cpu" if args.device == "auto" else args.device)
     )
-    if args.model == "wonn" and args.amp:
+    if args.model in ("wonn", "wonn_hier") and args.amp:
         raise SystemExit("WONN must run fp32 (--amp false); bf16 floors oscillator precision.")
 
     data = Path(args.data_dir)
