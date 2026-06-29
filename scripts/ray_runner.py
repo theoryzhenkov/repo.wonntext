@@ -19,6 +19,7 @@ import json
 import os
 import subprocess
 import time
+from pathlib import Path
 
 import ray
 
@@ -28,15 +29,15 @@ LOGDIR = "/nvme/theo/logs"
 
 @ray.remote(num_gpus=1)
 def run_job(name: str, cmd: str) -> dict:
-    os.makedirs(LOGDIR, exist_ok=True)
-    logpath = os.path.join(LOGDIR, f"{name}.log")
+    Path(LOGDIR).mkdir(parents=True, exist_ok=True)
+    logpath = Path(LOGDIR) / f"{name}.log"
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "?")
     wrapped = (
         f"source /nvme/theo/env.sh && cd {REPO} && "
         f"PATH=/nvme/theo/venv/bin:$PATH {cmd}"
     )
     t0 = time.time()
-    with open(logpath, "w") as f:
+    with logpath.open("w") as f:
         f.write(f"# job={name} gpu={gpu}\n# cmd={cmd}\n\n")
         f.flush()
         rc = subprocess.run(
@@ -47,7 +48,7 @@ def run_job(name: str, cmd: str) -> dict:
         "rc": rc,
         "gpu": gpu,
         "secs": round(time.time() - t0, 1),
-        "log": logpath,
+        "log": str(logpath),
     }
 
 
