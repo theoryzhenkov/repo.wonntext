@@ -1,0 +1,43 @@
+# Train the 10x Transformer baseline on WikiText-2 using an A40.
+# Uses the default SkyPilot image (torch is installed in setup).
+
+name: transformer-wikitext-10x
+
+resources:
+  cloud: runpod
+  accelerators: A40:1
+  disk_size: 100
+
+workdir: .
+
+setup: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+
+  pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
+  pip install --no-cache-dir -r sky/requirements-runtime.txt
+
+  # Prepare WikiText-2 BPE dataset.
+  python scripts/prepare_wikitext.py \
+      --out_dir "$HOME/wikitext_data" \
+      --vocab_size 10000
+
+run: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+  PYTHONPATH=src python -m wonntext.train \
+      --data_dir "$HOME/wikitext_data" \
+      --seq_len 256 \
+      --batchsize 32 \
+      --eval_batchsize 64 \
+      --model transformer \
+      --d_model 768 \
+      --nhead 8 \
+      --num_layers 4 \
+      --d_ff 2048 \
+      --epochs 50 \
+      --lr 1e-3 \
+      --clip_grad_norm 1.0 \
+      --eval_freq 1 \
+      --device auto \
+      --exp_name transformer_wikitext_10x
