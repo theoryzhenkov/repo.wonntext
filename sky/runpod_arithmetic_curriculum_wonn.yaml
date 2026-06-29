@@ -1,0 +1,71 @@
+# Fine-tune the 2.8M WONNText WikiText checkpoint on the two-stage arithmetic curriculum.
+# Stage 1 (two-digit addition) saturated the original comparison (WONN 99.4%);
+# stage 2 (three-number +,-,*,/ with standard precedence) de-saturates it.
+# Requires assets/weights/wonntext_wikitext.bin (the pre-existing pipeline checkpoint).
+
+name: arithmetic-curriculum-wonn
+
+resources:
+  cloud: runpod
+  accelerators: L4:1
+  disk_size: 100
+
+workdir: .
+
+setup: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+
+  pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
+  pip install --no-cache-dir -r sky/requirements-runtime.txt
+
+  # Generate both curriculum stages on the node.
+  python scripts/prepare_arithmetic_curriculum.py \
+      --out_dir data/arithmetic_curriculum \
+      --tokenizer_path assets/wikitext/tokenizer.json
+
+run: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+
+  # Stage 1: two-digit addition (from the WikiText pretrained checkpoint).
+  PYTHONPATH=src python -m wonntext.train_arithmetic \
+      --data_dir data/arithmetic_curriculum/stage1 \
+      --checkpoint assets/weights/wonntext_wikitext.bin \
+      --model wonn \
+      --ch 256 \
+      --heads 8 \
+      --L 1 \
+      --T 16 \
+      --rope true \
+      --omega_as_token_embed true \
+      --epochs 100 \
+      --batchsize 64 \
+      --eval_batchsize 256 \
+      --lr 1e-4 \
+      --clip_grad_norm 1.0 \
+      --eval_freq 10 \
+      --device auto \
+      --save_dir runs/arithmetic_curriculum \
+      --exp_name stage1_wonntext
+
+  # Stage 2: three-number expressions with +, -, *, / (from stage 1).
+  PYTHONPATH=src python -m wonntext.train_arithmetic \
+      --data_dir data/arithmetic_curriculum/stage2 \
+      --checkpoint runs/arithmetic_curriculum/stage1_wonntext/final.pt \
+      --model wonn \
+      --ch 256 \
+      --heads 8 \
+      --L 1 \
+      --T 16 \
+      --rope true \
+      --omega_as_token_embed true \
+      --epochs 100 \
+      --batchsize 64 \
+      --eval_batchsize 256 \
+      --lr 1e-4 \
+      --clip_grad_norm 1.0 \
+      --eval_freq 10 \
+      --device auto \
+      --save_dir runs/arithmetic_curriculum \
+      --exp_name stage2_wonntext
