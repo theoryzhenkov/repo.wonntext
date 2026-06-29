@@ -129,10 +129,14 @@ def main() -> None:
         torch.load(data / "extrapolation_answer_mask.pt"),
     )
 
-    lo, hi = meta["train_distribution"]["operands"]
-    dlo, dhi = meta["train_distribution"]["digits"]
-    stream = OnlineMathDataset(lo, hi, dlo, dhi, seq_len=meta["seq_len"],
-                               exclude=heldout, seed=args.seed)
+    td = meta["train_distribution"]
+    lo, hi = td["operands"]
+    dlo, dhi = td["digits"]
+    stream = OnlineMathDataset(
+        lo, hi, dlo, dhi, seq_len=meta["seq_len"],
+        ops_pool=td.get("ops", "+-*/"), max_result=td.get("max_result", 1_000_000),
+        exclude=heldout, seed=args.seed,
+    )
     loader = iter(DataLoader(stream, batch_size=args.batch_size, num_workers=args.num_workers))
 
     model = build_model(args, meta).to(device)

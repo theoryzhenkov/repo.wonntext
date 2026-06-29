@@ -17,13 +17,16 @@ from __future__ import annotations
 
 import random
 from collections.abc import Iterator
+from fractions import Fraction
 
 import torch
 from torch.utils.data import IterableDataset, get_worker_info
 
 # Fixed character vocabulary. PAD/MASK first so ids are stable.
 PAD, MASK = "<pad>", "<mask>"
-CHARS = list("0123456789+-=")
+CHARS = list("0123456789+-*/=")
+DEFAULT_OPS = "+-*/"
+DEFAULT_MAX_RESULT = 1_000_000
 STOI = {PAD: 0, MASK: 1, **{c: i + 2 for i, c in enumerate(CHARS)}}
 ITOS = {i: c for c, i in STOI.items()}
 PAD_ID, MASK_ID = STOI[PAD], STOI[MASK]
@@ -35,9 +38,31 @@ DEFAULT_SEQ_LEN = 32
 
 
 def _operand(rng: random.Random, min_digits: int, max_digits: int) -> int:
+    # Operands are >= 1 (never 0) so a '/' divisor is never zero.
     d = rng.randint(min_digits, max_digits)
-    low = 0 if d == 1 else 10 ** (d - 1)
+    low = 1 if d == 1 else 10 ** (d - 1)
     return rng.randint(low, 10**d - 1)
+
+
+def _evaluate(operands: list[int], ops: list[str]) -> Fraction | None:
+    """Exact eval under standard precedence (* / before + -). None on /0."""
+    vals: list[Fraction] = [Fraction(operands[0])]
+    add_ops: list[str] = []
+    for op, x in zip(ops, operands[1:], strict=True):
+        fx = Fraction(x)
+        if op == "*":
+            vals[-1] *= fx
+        elif op == "/":
+            if fx == 0:
+                return None
+            vals[-1] /= fx
+        else:
+            add_ops.append(op)
+            vals.append(fx)
+    acc = vals[0]
+    for op, v in zip(add_ops, vals[1:], strict=True):
+        acc = acc + v if op == "+" else acc - v
+    return acc
 
 
 def sample_equation(
@@ -46,17 +71,25 @@ def sample_equation(
     max_operands: int,
     min_digits: int,
     max_digits: int,
-) -> tuple[str, str]:
-    """Return (question_with_equals, answer_str) for a fresh +/- equation."""
+    ops_pool: str = DEFAULT_OPS,
+    max_result: int = DEFAULT_MAX_RESULT,
+) -> tuple[str, str] | None:
+    """Sample one equation; None if it is invalid (non-integer / out-of-range).
+
+    Uses standard precedence and exact arithmetic; only expressions whose final
+    result is a whole integer with ``|result| <= max_result`` are kept, so the
+    answer is always a clean integer string.
+    """
     n = rng.randint(min_operands, max_operands)
     operands = [_operand(rng, min_digits, max_digits) for _ in range(n)]
-    ops = [rng.choice("+-") for _ in range(n - 1)]
-    acc = operands[0]
+    ops = [rng.choice(ops_pool) for _ in range(n - 1)]
+    result = _evaluate(operands, ops)
+    if result is None or result.denominator != 1 or abs(result.numerator) > max_result:
+        return None
     q = str(operands[0])
     for op, x in zip(ops, operands[1:], strict=True):
-        acc = acc + x if op == "+" else acc - x
         q += f"{op}{x}"
-    return q + "=", str(acc)
+    return q + "=", str(result.numerator)
 
 
 def encode(q: str, a: str, seq_len: int) -> tuple[torch.Tensor, torch.Tensor] | None:
@@ -81,11 +114,15 @@ class OnlineMathDataset(IterableDataset):
         min_digits: int,
         max_digits: int,
         seq_len: int = DEFAULT_SEQ_LEN,
+        ops_pool: str = DEFAULT_OPS,
+        max_result: int = DEFAULT_MAX_RESULT,
         exclude: set[str] | None = None,
         seed: int = 0,
     ) -> None:
         super().__init__()
         self.cfg = (min_operands, max_operands, min_digits, max_digits)
+        self.ops_pool = ops_pool
+        self.max_result = int(max_result)
         self.seq_len = int(seq_len)
         self.exclude = exclude or set()
         self.seed = int(seed)
@@ -95,7 +132,10 @@ class OnlineMathDataset(IterableDataset):
         wid = 0 if info is None else info.id
         rng = random.Random((self.seed << 16) ^ wid)
         while True:
-            q, a = sample_equation(rng, *self.cfg)
+            sample = sample_equation(rng, *self.cfg, self.ops_pool, self.max_result)
+            if sample is None:
+                continue
+            q, a = sample
             if q in self.exclude:
                 continue
             enc = encode(q, a, self.seq_len)
@@ -112,6 +152,8 @@ def build_fixed_set(
     max_digits: int,
     seq_len: int,
     seed: int,
+    ops_pool: str = DEFAULT_OPS,
+    max_result: int = DEFAULT_MAX_RESULT,
     exclude: set[str] | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, set[str]]:
     """Build a deduplicated fixed set; returns (ids, answer_mask, question_set)."""
@@ -120,9 +162,14 @@ def build_fixed_set(
     questions: set[str] = set()
     ids_list, mask_list = [], []
     attempts = 0
-    while len(ids_list) < n and attempts < n * 50:
+    while len(ids_list) < n and attempts < n * 200:
         attempts += 1
-        q, a = sample_equation(rng, min_operands, max_operands, min_digits, max_digits)
+        sample = sample_equation(
+            rng, min_operands, max_operands, min_digits, max_digits, ops_pool, max_result
+        )
+        if sample is None:
+            continue
+        q, a = sample
         if q in seen:
             continue
         enc = encode(q, a, seq_len)

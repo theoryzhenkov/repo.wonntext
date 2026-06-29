@@ -19,6 +19,8 @@ from pathlib import Path
 import torch
 
 from wonntext.math_data import (
+    DEFAULT_MAX_RESULT,
+    DEFAULT_OPS,
     DEFAULT_SEQ_LEN,
     MASK_ID,
     PAD_ID,
@@ -37,7 +39,9 @@ def main() -> None:
     ap.add_argument("--min_operands", type=int, default=2)
     ap.add_argument("--max_operands", type=int, default=4)
     ap.add_argument("--min_digits", type=int, default=1)
-    ap.add_argument("--max_digits", type=int, default=3)
+    ap.add_argument("--max_digits", type=int, default=2)
+    ap.add_argument("--ops", default=DEFAULT_OPS, help="operator pool, e.g. '+-*/' or '+-'")
+    ap.add_argument("--max_result", type=int, default=DEFAULT_MAX_RESULT)
     ap.add_argument("--n_test", type=int, default=10_000)
     ap.add_argument("--n_extrapolation", type=int, default=10_000)
     ap.add_argument("--extrapolation_operands", type=int, default=5)
@@ -50,6 +54,7 @@ def main() -> None:
     test_ids, test_mask, test_q = build_fixed_set(
         args.n_test, args.min_operands, args.max_operands,
         args.min_digits, args.max_digits, args.seq_len, args.seed,
+        ops_pool=args.ops, max_result=args.max_result,
     )
     torch.save(test_ids, out / "test_ids.pt")
     torch.save(test_mask, out / "test_answer_mask.pt")
@@ -57,7 +62,8 @@ def main() -> None:
     # Extrapolation set: more operands than trained, disjoint from the test set.
     ex_ids, ex_mask, ex_q = build_fixed_set(
         args.n_extrapolation, args.extrapolation_operands, args.extrapolation_operands,
-        args.min_digits, args.max_digits, args.seq_len, args.seed + 1, exclude=test_q,
+        args.min_digits, args.max_digits, args.seq_len, args.seed + 1,
+        ops_pool=args.ops, max_result=args.max_result, exclude=test_q,
     )
     torch.save(ex_ids, out / "extrapolation_ids.pt")
     torch.save(ex_mask, out / "extrapolation_answer_mask.pt")
@@ -75,6 +81,8 @@ def main() -> None:
         "train_distribution": {
             "operands": [args.min_operands, args.max_operands],
             "digits": [args.min_digits, args.max_digits],
+            "ops": args.ops,
+            "max_result": args.max_result,
         },
         "extrapolation": {"operands": args.extrapolation_operands},
         "n_test": len(test_q),
