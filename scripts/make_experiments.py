@@ -84,9 +84,12 @@ def main() -> None:
     ap.add_argument("--T", type=int, default=8)
     ap.add_argument("--steps", type=int, default=20_000)
     ap.add_argument("--seeds", type=int, nargs="+", default=[0])
+    ap.add_argument("--arch", default="wonn,universal,classical",
+                    help="comma-separated archs to include (wonn,universal,classical)")
     ap.add_argument("--out", default="experiments/math_3x3.json")
     args = ap.parse_args()
     T = args.T
+    archs = {a.strip() for a in args.arch.split(",")}
 
     rows = []
     for budget in (2e6, 5e6, 10e6):
@@ -125,15 +128,18 @@ def main() -> None:
     for r in rows:
         tag = f"{int(r['budget']/1e6)}M"
         for s in args.seeds:
-            jobs.append({"name": f"wonn_{tag}_s{s}",
-                         "cmd": f"{base} --model wonn --ch {r['ch']} --L 1 --T {T} "
-                                f"--seed {s} --exp_name wonn_{tag}_s{s}"})
-            jobs.append({"name": f"universal_{tag}_s{s}",
-                         "cmd": f"{base} --model universal --dim {r['d']} --depth {T} "
-                                f"--seed {s} --exp_name universal_{tag}_s{s}"})
-            jobs.append({"name": f"classical_{tag}_s{s}",
-                         "cmd": f"{base} --model classical --dim {r['d']} --depth {r['nl']} "
-                                f"--seed {s} --exp_name classical_{tag}_s{s}"})
+            if "wonn" in archs:
+                jobs.append({"name": f"wonn_{tag}_s{s}",
+                             "cmd": f"{base} --model wonn --ch {r['ch']} --L 1 --T {T} "
+                                    f"--seed {s} --exp_name wonn_{tag}_s{s}"})
+            if "universal" in archs:
+                jobs.append({"name": f"universal_{tag}_s{s}",
+                             "cmd": f"{base} --model universal --dim {r['d']} --depth {T} "
+                                    f"--seed {s} --exp_name universal_{tag}_s{s}"})
+            if "classical" in archs:
+                jobs.append({"name": f"classical_{tag}_s{s}",
+                             "cmd": f"{base} --model classical --dim {r['d']} --depth {r['nl']} "
+                                    f"--seed {s} --exp_name classical_{tag}_s{s}"})
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
