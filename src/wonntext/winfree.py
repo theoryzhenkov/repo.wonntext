@@ -320,6 +320,96 @@ class WinfreeTextLayer(nn.Module):
         dtheta, _ = self.winfree_step(theta=theta, omega=omega, mask=mask)
         return wrap_pm_pi(theta + gamma * dtheta)
 
+    def _forward_predictor_corrector(
+        self,
+        theta: torch.Tensor,
+        omega: torch.Tensor,
+        gamma: torch.Tensor,
+        mask: torch.Tensor | None,
+        return_thetas: bool,
+        return_es: bool,
+        pred_scale: float,
+        t_pred: int,
+        t_corr: int,
+    ) -> tuple[
+        torch.Tensor,
+        list[torch.Tensor] | None,
+        list[torch.Tensor] | None,
+    ]:
+        thetas: list[torch.Tensor] | None = [] if return_thetas else None
+        es: list[torch.Tensor] | None = [] if return_es else None
+        if return_es and es is not None:
+            es.append(torch.zeros(theta.shape[0], device=theta.device, dtype=theta.dtype))
+
+        theta = wrap_pm_pi(theta)
+        gamma_pred = gamma * pred_scale
+
+        for _ in range(t_pred):
+            dtheta, energy_int = self.winfree_step(theta=theta, omega=omega, mask=mask)
+            theta = wrap_pm_pi(theta + gamma_pred * dtheta)
+            if return_thetas and thetas is not None:
+                thetas.append(theta)
+            if return_es and es is not None:
+                es.append((-energy_int).reshape(theta.shape[0], -1).sum(dim=-1))
+
+        for _ in range(t_corr):
+            dtheta, energy_int = self.winfree_step(theta=theta, omega=omega, mask=mask)
+            theta = wrap_pm_pi(theta + gamma * dtheta)
+            if return_thetas and thetas is not None:
+                thetas.append(theta)
+            if return_es and es is not None:
+                es.append((-energy_int).reshape(theta.shape[0], -1).sum(dim=-1))
+
+        return theta, thetas, es
+
+    def _forward_parallel_scan(
+        self,
+        theta: torch.Tensor,
+        omega: torch.Tensor,
+        T: int,
+        gamma: torch.Tensor,
+        mask: torch.Tensor | None,
+        refine: bool,
+    ) -> torch.Tensor:
+        """Parallel-scan Winfree: evaluate coupling on a reference trajectory,
+        accumulate corrections via cumsum (parallel prefix sum).
+
+        Serial depth is O(1) on GPU: one batched attention + one cumsum.
+        The coupling is evaluated on the free-running (uncoupled) trajectory,
+        which is a first-order linearisation. ``refine`` does a second pass
+        using the approximated trajectory as the new reference.
+        """
+        B, C, N = theta.shape
+        device = theta.device
+        dtype = theta.dtype
+
+        steps = torch.arange(1, T + 1, device=device, dtype=dtype)
+        theta_free = wrap_pm_pi(
+            theta.unsqueeze(1) + gamma * steps.view(1, T, 1, 1) * omega.unsqueeze(1)
+        )
+        theta_ref = theta_free
+
+        mask_expanded = (
+            mask.unsqueeze(1).expand(B, T, N).reshape(B * T, N)
+            if mask is not None
+            else None
+        )
+
+        for _ in range(2 if refine else 1):
+            flat = theta_ref.reshape(B * T, C, N)
+            influence = torch.sin(flat)
+            field = self.coupling[0](influence, mask=mask_expanded)
+            field = self._apply_norm(field)
+            field = self.coupling[2](field)
+
+            sensitivity = torch.cos(flat)
+            corrections = (gamma * sensitivity * field).reshape(B, T, C, N)
+            cum_corr = torch.cumsum(corrections, dim=1)
+
+            theta_ref = wrap_pm_pi(theta_free + cum_corr)
+
+        return theta_ref[:, -1]
+
     def forward(
         self,
         theta: torch.Tensor,
@@ -330,11 +420,39 @@ class WinfreeTextLayer(nn.Module):
         return_thetas: bool = False,
         return_es: bool = False,
         grad_checkpoint: bool = False,
+        mode: str = "recurrent",
+        pred_scale: float = 3.0,
+        t_pred: int = 2,
+        t_corr: int = 3,
     ) -> tuple[
         torch.Tensor,
         list[torch.Tensor] | None,
         list[torch.Tensor] | None,
     ]:
+        if mode in ("parallel_scan", "parallel_scan_refined"):
+            result = self._forward_parallel_scan(
+                theta=theta,
+                omega=omega,
+                T=T,
+                gamma=gamma,
+                mask=mask,
+                refine=(mode == "parallel_scan_refined"),
+            )
+            return result, None, None
+
+        if mode == "predictor_corrector":
+            return self._forward_predictor_corrector(
+                theta=theta,
+                omega=omega,
+                gamma=gamma,
+                mask=mask,
+                return_thetas=return_thetas,
+                return_es=return_es,
+                pred_scale=pred_scale,
+                t_pred=t_pred,
+                t_corr=t_corr,
+            )
+
         thetas: list[torch.Tensor] | None = [] if return_thetas else None
         es: list[torch.Tensor] | None = [] if return_es else None
 

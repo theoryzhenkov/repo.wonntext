@@ -45,6 +45,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lr_min", type=float, default=0.0)
     parser.add_argument("--amp", type=str2bool, default=False)
     parser.add_argument("--grad_checkpoint", type=str2bool, default=False)
+    parser.add_argument(
+        "--winfree_mode",
+        type=str,
+        choices=["recurrent", "predictor_corrector", "parallel_scan", "parallel_scan_refined"],
+        default="recurrent",
+        help="Winfree layer forward mode (WONN only).",
+    )
     parser.add_argument("--clip_grad_norm", type=float, default=1.0)
 
     parser.add_argument("--seq_len", type=int, default=128)
@@ -300,6 +307,7 @@ def main() -> None:
             pad_token_id=pad_token_id,
             mask_token_id=mask_token_id,
             grad_checkpoint=args.grad_checkpoint,
+            winfree_mode=args.winfree_mode,
         ).to(device)
 
     num_params = sum(p.numel() for p in model.parameters())
