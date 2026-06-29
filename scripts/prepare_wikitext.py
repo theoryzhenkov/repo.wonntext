@@ -32,6 +32,13 @@ def parse_args() -> argparse.Namespace:
         "--dataset", type=str, default="Salesforce/wikitext", help="HF dataset name."
     )
     parser.add_argument("--config", type=str, default="wikitext-2-raw-v1")
+    parser.add_argument(
+        "--tokenizer_path",
+        type=str,
+        default=None,
+        help="Reuse an existing tokenizer instead of training a new one. "
+        "Use this when encoding a larger dataset with the same vocab.",
+    )
     return parser.parse_args()
 
 
@@ -65,13 +72,19 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print("Downloading WikiText-2...")
+    print(f"Downloading {args.config}...")
     dataset = load_dataset(args.dataset, args.config)
 
-    train_text = "\n\n".join(dataset["train"]["text"])
+    if args.tokenizer_path is not None:
+        from tokenizers import Tokenizer
 
-    print("Training BPE tokenizer...")
-    tokenizer = train_tokenizer(train_text, vocab_size=args.vocab_size)
+        print(f"Loading existing tokenizer from {args.tokenizer_path}...")
+        tokenizer = Tokenizer.from_file(args.tokenizer_path)
+    else:
+        train_text = "\n\n".join(dataset["train"]["text"])
+
+        print("Training BPE tokenizer...")
+        tokenizer = train_tokenizer(train_text, vocab_size=args.vocab_size)
 
     # Reserve special-token ids deterministically.
     special_tokens = {

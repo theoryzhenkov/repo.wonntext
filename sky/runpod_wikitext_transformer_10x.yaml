@@ -18,11 +18,13 @@ setup: |
   pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
   pip install --no-cache-dir -r sky/requirements-runtime.txt
 
-  # Prepare WikiText-103 BPE dataset (~100M tokens, vs 2M for WikiText-2).
+  # Prepare WikiText-103 BPE dataset (~100M tokens).
+  # Reuse the WikiText-2 tokenizer so the arithmetic fine-tuning vocab matches.
   python scripts/prepare_wikitext.py \
       --out_dir "$HOME/wikitext_data" \
       --vocab_size 10000 \
-      --config wikitext-103-raw-v1
+      --config wikitext-103-raw-v1 \
+      --tokenizer_path assets/wikitext/tokenizer.json
 
 run: |
   set -e
