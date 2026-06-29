@@ -27,13 +27,31 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 import ray
 
 REPO = "/nvme/theo/wonntext"
+
+# In-flight task refs, so a SIGTERM/SIGINT can cancel them cleanly via Ray
+# (ray.cancel) instead of leaving orphaned workers running on the GPUs.
+_ACTIVE_REFS: list = []
+
+
+def _install_cancel_handler() -> None:
+    def _on_cancel(signum: int, frame: object) -> None:
+        import contextlib
+        for ref in list(_ACTIVE_REFS):
+            with contextlib.suppress(Exception):
+                ray.cancel(ref, force=True)
+        sys.exit(130 if signum == signal.SIGINT else 143)
+
+    signal.signal(signal.SIGTERM, _on_cancel)
+    signal.signal(signal.SIGINT, _on_cancel)
 LOGDIR = "/nvme/theo/logs"
 
 
@@ -80,11 +98,14 @@ def _dispatch_pinned(jobs: list[dict], gpu_pool: list[int], cap: int) -> None:
         while todo and len(pending) < cap and free:
             gpu = free.pop(0)
             j = todo.pop(0)
-            pending.append((runner.remote(j["name"], j["cmd"], gpu), gpu))
+            ref = runner.remote(j["name"], j["cmd"], gpu)
+            _ACTIVE_REFS.append(ref)
+            pending.append((ref, gpu))
         done, _ = ray.wait([r for r, _ in pending], num_returns=1)
         survivors = []
         for ref, gpu in pending:
             if ref in done:
+                _ACTIVE_REFS.remove(ref)
                 free.append(gpu)
                 r = ray.get(ref)
                 status = "OK" if r["rc"] == 0 else f"FAILED(rc={r['rc']})"
@@ -98,10 +119,15 @@ def _dispatch_pinned(jobs: list[dict], gpu_pool: list[int], cap: int) -> None:
 
 def _dispatch_ray(jobs: list[dict], gpus_per_job: float) -> None:
     runner = run_job.options(num_gpus=gpus_per_job)
-    pending = [runner.remote(j["name"], j["cmd"], None) for j in jobs]
+    pending = []
+    for j in jobs:
+        ref = runner.remote(j["name"], j["cmd"], None)
+        _ACTIVE_REFS.append(ref)
+        pending.append(ref)
     print(f"dispatched {len(pending)} jobs across the pool\n", flush=True)
     while pending:
         done, pending = ray.wait(pending, num_returns=1)
+        _ACTIVE_REFS.remove(done[0])
         r = ray.get(done[0])
         status = "OK" if r["rc"] == 0 else f"FAILED(rc={r['rc']})"
         print(f"[{status}] {r['name']} gpu={r['gpu']} {r['secs']}s -> {r['log']}",
@@ -123,6 +149,7 @@ def main() -> None:
         jobs = json.load(f)
 
     ray.init(address="auto")
+    _install_cancel_handler()
     if args.gpu_ids:
         pool = [int(x) for x in args.gpu_ids.split(",")]
         cap = args.max_concurrent or len(pool)

@@ -60,6 +60,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--segments", type=int, default=4)
     p.add_argument("--slow_scale", type=float, default=0.25)
     p.add_argument("--readout", choices=["fast", "slow", "sum"], default="slow")
+    p.add_argument("--gamma", type=float, default=0.1,
+                   help="Winfree coupling strength (vanilla gamma; hier gamma_f=gamma_s)")
     # transformers
     p.add_argument("--dim", type=int, default=256)
     p.add_argument("--depth", type=int, default=8,
@@ -75,13 +77,14 @@ def build_model(args: argparse.Namespace, meta: dict) -> torch.nn.Module:
     if args.model == "wonn":
         return WONNText(
             vocab_size=v, ch=args.ch, max_seq_len=meta["seq_len"], L=args.L,
-            T=args.T, heads=args.heads, mask_token_id=mask_id,
+            T=args.T, heads=args.heads, gamma=args.gamma, mask_token_id=mask_id,
         )
     if args.model == "wonn_hier":
         return HierarchicalWONNText(
             vocab_size=v, ch=args.ch, max_seq_len=meta["seq_len"], heads=args.heads,
             n_cycles=args.n_cycles, tau=args.tau, segments=args.segments,
-            slow_scale=args.slow_scale, readout=args.readout, mask_token_id=mask_id,
+            slow_scale=args.slow_scale, readout=args.readout,
+            gamma_f=args.gamma, gamma_s=args.gamma, mask_token_id=mask_id,
         )
     cls = TransformerLM if args.model == "classical" else UniversalTransformerLM
     depth_kw = "n_layers" if args.model == "classical" else "n_steps"
