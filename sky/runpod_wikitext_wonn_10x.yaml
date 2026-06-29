@@ -25,11 +25,11 @@ setup: |
 run: |
   set -e
   cd "$SKYP_TASK_WORKDIR"
-  PYTHONPATH=src python -m wonntext.train \
+  PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONPATH=src python -m wonntext.train \
       --data_dir "$HOME/wikitext_data" \
       --seq_len 256 \
-      --batchsize 64 \
-      --eval_batchsize 128 \
+      --batchsize 16 \
+      --eval_batchsize 32 \
       --model wonn \
       --ch 1024 \
       --heads 16 \

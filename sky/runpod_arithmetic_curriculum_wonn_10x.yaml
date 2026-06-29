@@ -28,7 +28,7 @@ run: |
   cd "$SKYP_TASK_WORKDIR"
 
   # Stage 1: two-digit addition.
-  PYTHONPATH=src python -m wonntext.train_arithmetic \
+  PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONPATH=src python -m wonntext.train_arithmetic \
       --data_dir data/arithmetic_curriculum/stage1 \
       --checkpoint assets/weights/wonntext_wikitext_10x.bin \
       --model wonn \
@@ -39,8 +39,8 @@ run: |
       --rope true \
       --omega_as_token_embed true \
       --epochs 50 \
-      --batchsize 64 \
-      --eval_batchsize 256 \
+      --batchsize 16 \
+      --eval_batchsize 64 \
       --lr 1e-4 \
       --optimizer adamw \
       --weight_decay 0.01 \
@@ -54,7 +54,7 @@ run: |
       --exp_name stage1_wonntext_10x
 
   # Stage 2: three-number expressions with +, -, *, /.
-  PYTHONPATH=src python -m wonntext.train_arithmetic \
+  PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONPATH=src python -m wonntext.train_arithmetic \
       --data_dir data/arithmetic_curriculum/stage2 \
       --checkpoint runs/arithmetic_curriculum_10x/stage1_wonntext_10x/final.pt \
       --model wonn \
@@ -65,8 +65,8 @@ run: |
       --rope true \
       --omega_as_token_embed true \
       --epochs 100 \
-      --batchsize 64 \
-      --eval_batchsize 256 \
+      --batchsize 16 \
+      --eval_batchsize 64 \
       --lr 1e-4 \
       --optimizer adamw \
       --weight_decay 0.01 \
