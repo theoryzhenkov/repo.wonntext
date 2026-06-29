@@ -35,3 +35,11 @@ typecheck:
 
 # Lint + typecheck + test (CI-equivalent)
 check: lint typecheck test
+
+# Compile the Typst preprint to PDF
+paper-compile:
+    nix run nixpkgs#typst -- compile paper/main.typ
+
+# Live-preview the Typst preprint (open http://127.0.0.1:23626 in a browser)
+paper-preview:
+    nix run nixpkgs#tinymist -- preview paper/main.typ

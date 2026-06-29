@@ -40,3 +40,4 @@ checkpoints/
 # prepared datasets
 data/wikitext*/
 data/wikitext_*/
+paper/main.pdf
