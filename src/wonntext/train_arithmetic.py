@@ -42,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--warmup_steps", type=int, default=0)
     parser.add_argument("--lr_min", type=float, default=0.0)
     parser.add_argument("--amp", type=str2bool, default=False)
+    parser.add_argument("--grad_checkpoint", type=str2bool, default=False)
     parser.add_argument("--clip_grad_norm", type=float, default=1.0)
 
     parser.add_argument(
@@ -274,6 +275,7 @@ def main() -> None:
             omega_as_token_embed=args.omega_as_token_embed,
             pad_token_id=pad_token_id,
             mask_token_id=mask_token_id,
+            grad_checkpoint=args.grad_checkpoint,
         ).to(device)
 
     if args.checkpoint is not None:

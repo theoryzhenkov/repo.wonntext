@@ -12,6 +12,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.checkpoint
 
 from wonntext.utils import wrap_pm_pi
 
@@ -308,6 +309,17 @@ class WinfreeTextLayer(nn.Module):
         energy_int = influence * field
         return dtheta, energy_int
 
+    def _checkpointed_step(
+        self,
+        theta: torch.Tensor,
+        omega: torch.Tensor,
+        mask: torch.Tensor | None,
+        gamma: torch.Tensor,
+    ) -> torch.Tensor:
+        """Single Winfree step for use with gradient checkpointing."""
+        dtheta, _ = self.winfree_step(theta=theta, omega=omega, mask=mask)
+        return wrap_pm_pi(theta + gamma * dtheta)
+
     def forward(
         self,
         theta: torch.Tensor,
@@ -317,6 +329,7 @@ class WinfreeTextLayer(nn.Module):
         mask: torch.Tensor | None = None,
         return_thetas: bool = False,
         return_es: bool = False,
+        grad_checkpoint: bool = False,
     ) -> tuple[
         torch.Tensor,
         list[torch.Tensor] | None,
@@ -330,9 +343,26 @@ class WinfreeTextLayer(nn.Module):
 
         theta = wrap_pm_pi(theta)
 
+        # Gradient checkpointing trades ~33% extra compute for O(1) memory
+        # across the T recurrence. Disabled for diagnostic passes that need
+        # intermediate thetas/energies.
+        use_ckpt = grad_checkpoint and not (return_thetas or return_es)
+
         for _ in range(int(T)):
-            dtheta, energy_int = self.winfree_step(theta=theta, omega=omega, mask=mask)
-            theta = wrap_pm_pi(theta + gamma * dtheta)
+            if use_ckpt:
+                theta = torch.utils.checkpoint.checkpoint(
+                    self._checkpointed_step,
+                    theta,
+                    omega,
+                    mask,
+                    gamma,
+                    use_reentrant=False,
+                )
+            else:
+                dtheta, energy_int = self.winfree_step(
+                    theta=theta, omega=omega, mask=mask
+                )
+                theta = wrap_pm_pi(theta + gamma * dtheta)
 
             if return_thetas:
                 assert thetas is not None

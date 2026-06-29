@@ -1,6 +1,6 @@
-# Fine-tune the 10x WONNText WikiText checkpoint on the two-stage arithmetic curriculum.
+# Fine-tune the 10x WONNText WikiText-103 checkpoint on the two-stage arithmetic curriculum.
 # Requires assets/weights/wonntext_wikitext_10x.bin (produced by the WikiText pre-training run).
-# Uses the default SkyPilot image.
+# Uses the default SkyPilot image. T=8 + gradient checkpointing for speed.
 
 name: arithmetic-curriculum-wonn-10x
 
@@ -35,18 +35,19 @@ run: |
       --ch 1024 \
       --heads 16 \
       --L 4 \
-      --T 16 \
+      --T 8 \
       --rope true \
       --omega_as_token_embed true \
       --epochs 50 \
-      --batchsize 16 \
-      --eval_batchsize 64 \
+      --batchsize 64 \
+      --eval_batchsize 128 \
       --lr 1e-4 \
       --optimizer adamw \
       --weight_decay 0.01 \
       --warmup_steps 100 \
       --lr_min 1e-5 \
       --amp true \
+      --grad_checkpoint true \
       --clip_grad_norm 1.0 \
       --eval_freq 10 \
       --device auto \
@@ -61,18 +62,19 @@ run: |
       --ch 1024 \
       --heads 16 \
       --L 4 \
-      --T 16 \
+      --T 8 \
       --rope true \
       --omega_as_token_embed true \
       --epochs 100 \
-      --batchsize 16 \
-      --eval_batchsize 64 \
+      --batchsize 64 \
+      --eval_batchsize 128 \
       --lr 1e-4 \
       --optimizer adamw \
       --weight_decay 0.01 \
       --warmup_steps 100 \
       --lr_min 1e-5 \
       --amp true \
+      --grad_checkpoint true \
       --clip_grad_norm 1.0 \
       --eval_freq 10 \
       --device auto \
