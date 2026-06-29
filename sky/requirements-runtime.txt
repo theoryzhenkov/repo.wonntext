@@ -1,6 +1,0 @@
-# Runtime dependencies installed into the pre-baked RunPod image.
-# torch is already provided by the runpod/pytorch base image.
-numpy>=1.23
-tqdm>=4.64
-datasets>=2.14
-tokenizers>=0.19

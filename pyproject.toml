@@ -28,9 +28,6 @@ data = [
     "datasets>=2.14",
     "tokenizers>=0.19",
 ]
-cloud = [
-    "skypilot[runpod]>=0.10",
-]
 
 [tool.ruff]
 line-length = 100

@@ -13,9 +13,9 @@ sync:
 run *args:
     uv run python -m wonntext {{args}}
 
-# Train a masked-language WONN on a character corpus
+# Train on the online +/- arithmetic stream (see scripts/make_experiments.py for configs)
 train *args:
-    uv run python -m wonntext.train {{args}}
+    uv run python -m wonntext.train_math {{args}}
 
 # Run pytest
 test *args:
