@@ -15,7 +15,7 @@ from pathlib import Path
 import torch
 import tqdm
 
-from wonntext.baseline_transformer import TransformerLM
+from wonntext.baseline_transformer import TransformerLM, UniversalTransformerLM
 from wonntext.model import WONNText
 from wonntext.utils import seed_everything, str2bool
 
@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        choices=["wonn", "transformer"],
+        choices=["wonn", "transformer", "universal_transformer"],
         default="wonn",
     )
     parser.add_argument("--omega_as_token_embed", type=str2bool, default=True)
@@ -76,6 +76,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--d_model", type=int, default=232)
     parser.add_argument("--nhead", type=int, default=8)
     parser.add_argument("--num_layers", type=int, default=1)
+    parser.add_argument("--num_steps", type=int, default=6)
+    parser.add_argument("--timestep_embed", type=str2bool, default=False)
     parser.add_argument("--d_ff", type=int, default=None)
 
     parser.add_argument("--L", type=int, default=1)
@@ -267,7 +269,20 @@ def main() -> None:
         collate_fn=collate_fn,
     )
 
-    if args.model == "transformer":
+    if args.model == "universal_transformer":
+        model = UniversalTransformerLM(
+            vocab_size=vocab_size,
+            max_seq_len=max(seq_len, 256),
+            d_model=args.d_model,
+            nhead=args.nhead,
+            num_steps=args.num_steps,
+            d_ff=args.d_ff,
+            dropout=args.gamma,
+            pad_token_id=pad_token_id,
+            mask_token_id=mask_token_id,
+            timestep_embed=args.timestep_embed,
+        ).to(device)
+    elif args.model == "transformer":
         model = TransformerLM(
             vocab_size=vocab_size,
             max_seq_len=max(seq_len, 256),

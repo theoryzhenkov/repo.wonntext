@@ -14,7 +14,7 @@ from pathlib import Path
 import torch
 import tqdm
 
-from wonntext.baseline_transformer import TransformerLM
+from wonntext.baseline_transformer import TransformerLM, UniversalTransformerLM
 from wonntext.data import (
     CharCorpusDataset,
     RandomTokenDataset,
@@ -71,7 +71,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        choices=["wonn", "transformer"],
+        choices=["wonn", "transformer", "universal_transformer"],
         default="wonn",
         help="Model architecture to train.",
     )
@@ -104,6 +104,18 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=1,
         help="Transformer encoder layers (baseline only).",
+    )
+    parser.add_argument(
+        "--num_steps",
+        type=int,
+        default=6,
+        help="Universal Transformer: tied-block iterations (FLOP-match to WONN T).",
+    )
+    parser.add_argument(
+        "--timestep_embed",
+        type=str2bool,
+        default=False,
+        help="Universal Transformer: add a learned per-step embedding.",
     )
     parser.add_argument(
         "--d_ff",
@@ -291,7 +303,20 @@ def main() -> None:
         drop_last=False,
     )
 
-    if args.model == "transformer":
+    if args.model == "universal_transformer":
+        model = UniversalTransformerLM(
+            vocab_size=vocab_size,
+            max_seq_len=args.seq_len,
+            d_model=args.d_model,
+            nhead=args.nhead,
+            num_steps=args.num_steps,
+            d_ff=args.d_ff,
+            dropout=args.gamma,
+            pad_token_id=pad_token_id,
+            mask_token_id=mask_token_id,
+            timestep_embed=args.timestep_embed,
+        ).to(device)
+    elif args.model == "transformer":
         model = TransformerLM(
             vocab_size=vocab_size,
             max_seq_len=args.seq_len,
