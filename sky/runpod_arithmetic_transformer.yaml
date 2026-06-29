@@ -27,7 +27,7 @@ run: |
   cd "$SKYP_TASK_WORKDIR"
   PYTHONPATH=src python -m wonntext.train_arithmetic \
       --data_dir data/arithmetic \
-      --checkpoint runs/wonntext/transformer_baseline/final.pt \
+      --checkpoint assets/checkpoints/transformer_baseline.pt \
       --model transformer \
       --d_model 232 \
       --nhead 8 \
