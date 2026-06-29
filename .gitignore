@@ -36,8 +36,6 @@ runs/
 *.pt
 *.pth
 checkpoints/
-!assets/checkpoints/
-!assets/checkpoints/*.pt
 
 # prepared datasets
 data/wikitext*/
