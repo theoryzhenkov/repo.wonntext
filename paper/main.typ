@@ -150,6 +150,81 @@ All experiments use Adam with a learning rate of $1 times 10^-3$ for
 pretraining and $1 times 10^-4$ for fine-tuning, with gradient clipping at
 $1.0$. No weight decay, warmup, or mixed precision is used.
 
+= Experiments
+
+We pretrain both WONNText and the Transformer baseline on WikiText-2, then
+run two ablations (random $Omega$, causal attention). We then fine-tune both
+pretrained checkpoints on two-digit addition and evaluate on a held-out test
+set.
+
+== Pretrain
+
+WikiText-2 (Merity et al.) contains $~2M$ tokens of English text. After BPE
+tokenisation ($10\,000$ vocab), we chunk into sequences of length 256 and train
+for 50 epochs ($~100M$ tokens seen). At batch size 32, each epoch is $~7\,800$
+sequences ($~244$ steps).
+
+Training compute, estimated as $6 times N times D$ where $N$ is parameter
+count and $D$ is tokens seen:
+
+#table(
+  columns: (auto, auto, auto, auto),
+  align: (left, right, right, right),
+  [*Model*], [*Params*], [*Tokens seen*], [*FLOPS*],
+  [WONNText], [$2.96M$], [$100M$], [$~1.8 times 10^15$],
+  [Transformer], [$2.75M$], [$100M$], [$~1.7 times 10^15$],
+)
+
+Both amounts to $~1.7$-$1.8$ PFLOPS — well within the budget of a single L4 GPU
+($~30$ TFLOPS bf16) in under an hour of wall-clock time.
+
+== Finetuning
+
+We fine-tune the pretrained checkpoints on two-digit addition
+($a + b = c$, operands 10–99), yielding all $90 times 90 = 8\,100$ equations.
+We split into 80% train / 10% validation / 10% test (6\,480 / 810 / 810).
+
+The answer digits are replaced with the mask token; the model must predict
+them. Both models are initialised from their respective WikiText-2
+checkpoints and trained for 100 epochs at batch size 64, learning rate
+$1 times 10^-4$. The same BPE tokenizer is used (digits are single tokens).
+
+== Results
+
+The two-digit arithmetic test set is a fixed partition of all 8,100 equations
+(810 test examples, 2,070 answer tokens, zero train/test overlap). We report
+Wilson 95% confidence intervals on the binomial proportion:
+
+#table(
+  columns: (auto, auto, auto),
+  align: (left, left, left),
+  [*Metric*], [*WONNText (95% CI)*], [*Transformer (95% CI)*],
+  [Whole-answer acc.], [99.38% (98.56–99.74)], [43.95% (40.57–47.39)],
+  [Token acc.], [99.71% (99.37–99.87)], [77.29% (75.44–79.05)],
+)
+
+The confidence intervals do not overlap ($z = 24.8$, $p approx 0$). The
+55.4 percentage-point gap is robust to any reasonable run-to-run variance.
+
+= Discussion
+
+[TODO]
+
+= Future work
+
++ Investigate scaling laws for WONNText, training a complete matrix of 10M and 25M models. 
++ Look into internal model representations for interpretable circuits.
++ Applying COBRA architecture to WONNText
++ Gather traning dynamics to analyse the model for grokking and behavior emergence
+
+= References
+
+- Jiawen-Dai/WONN. Original Winfree Oscillatory Neural Network for Sudoku.
+- Merity, S. et al. WikiText-2 language modeling dataset.
+- Vaswani, A. et al. Attention Is All You Need (Transformer baseline).
+
+= Appendix A 
+
 == Hyperparameters
 
 #table(
@@ -174,63 +249,6 @@ $1.0$. No weight decay, warmup, or mixed precision is used.
   [Mask probability], [0.15], [0.15],
 )
 
-= Experiments
-
-We pretrain both WONNText and the Transformer baseline on WikiText-2, then
-run two ablations (random $Omega$, causal attention). We then fine-tune both
-pretrained checkpoints on two-digit addition and evaluate on a held-out test
-set with zero train/test overlap. All experiments use a single NVIDIA L4 GPU.
-
-== Pretrain
-
-WikiText-2 (Merity et al.) contains $~2M$ tokens of English text. After BPE
-tokenisation ($10\,000$ vocab), we chunk into sequences of length 256 and train
-for 50 epochs ($~100M$ tokens seen). At batch size 32, each epoch is $~7\,800$
-sequences ($~244$ steps).
-
-Training compute, estimated as $6 times N times D$ where $N$ is parameter
-count and $D$ is tokens seen:
-
-#table(
-  columns: (auto, auto, auto, auto),
-  align: (left, right, right, right),
-  [*Model*], [*Params*], [*Tokens seen*], [*FLOPS*],
-  [WONNText], [$2.96M$], [$100M$], [$~1.8 times 10^15$],
-  [Transformer], [$2.75M$], [$100M$], [$~1.7 times 10^15$],
-)
-
-Both amount to $~1.7$-$1.8$ PFLOPS — well within the budget of a single L4 GPU
-($~30$ TFLOPS bf16) in under an hour of wall-clock time.
-
-== Finetuning
-
-We fine-tune the pretrained checkpoints on two-digit addition
-($a + b = c$, operands 10–99), yielding all $90 times 90 = 8\,100$ equations.
-We split into 80% train / 10% validation / 10% test (6\,480 / 810 / 810) with
-*zero overlap* between train and test partitions.
-
-The answer digits are replaced with the mask token; the model must predict
-them. Both models are initialised from their respective WikiText-2
-checkpoints and trained for 100 epochs at batch size 64, learning rate
-$1 times 10^-4$. The same BPE tokenizer is used (digits are single tokens).
-
-== Results
-
-The two-digit arithmetic test set is a fixed partition of all 8,100 equations
-(810 test examples, 2,070 answer tokens, zero train/test overlap). We report
-Wilson 95% confidence intervals on the binomial proportion:
-
-#table(
-  columns: (auto, auto, auto),
-  align: (left, left, left),
-  [*Metric*], [*WONNText (95% CI)*], [*Transformer (95% CI)*],
-  [Whole-answer acc.], [99.38% (98.56–99.74)], [43.95% (40.57–47.39)],
-  [Token acc.], [99.71% (99.37–99.87)], [77.29% (75.44–79.05)],
-)
-
-The confidence intervals do not overlap ($z = 24.8$, $p approx 0$). The
-55.4 percentage-point gap is robust to any reasonable run-to-run variance.
-
 == Ablations
 
 We isolate the contribution of individual design choices by training ablated
@@ -246,48 +264,3 @@ bi-directional attention and random $Omega$ initialisation.
   [causal attention], [5.1900], [179.48], [20.60%],
   [Transformer baseline], [4.0758], [58.90], [30.29%],
 )
-
-= Discussion
-
-Three findings stand out.
-
-First, the token-conditioned frequency $omega$ is the single most important
-design choice. Replacing the learned token embedding with a random $omega$
-collapses perplexity from 43.0 to 58.0 — exactly matching the Transformer
-baseline. The oscillator architecture contributes nothing without this
-binding; with it, the phase dynamics provide a $15$-point perplexity
-advantage.
-
-Second, bidirectional coupling is essential for denoising. Restricting
-attention to causal (left-to-right) masks raises perplexity to 179.5, far
-worse than any other variant. This is expected — the model must attend to
-future context to reconstruct masked tokens — but it confirms that the
-Winfree coupling and attention masking are correctly integrated.
-
-Third, the arithmetic gap is large and statistically significant. After
-fine-tuning on the same data with the same optimiser, WONNText achieves
-$99.4%$ whole-answer accuracy versus $44.0%$ for the Transformer
-($z = 24.8$, $p approx 0$, non-overlapping 95% confidence intervals). Both
-models see the same equations with the same tokeniser; the difference is
-entirely architectural.
-
-An oscillator dynamics diagnostic reveals that the $T$-step phase trajectory
-forms a *limit cycle*, not a fixed point: the oscillator energy reaches a
-minimum around step 5–6, then rises. This rules out treating the recurrence as an implicit equation (DEQ-style) and motivates reducing $T$.
-
-The results suggest that oscillator models of WONNText class significantly
-outperform classical Transformers for language modeling and mathematical
-reasoning at tiny scales. 
-
-= Future work
-
-+ Investigate scaling laws for WONNText, training a complete matrix of 10M and 25M models. 
-+ Look into internal model representations for interpretable circuits.
-+ Applying COBRA architecture to WONNText
-+ Gather traning dynamics to analyse the model for grokking and behavior emergence
-
-= References
-
-- Jiawen-Dai/WONN. Original Winfree Oscillatory Neural Network for Sudoku.
-- Merity, S. et al. WikiText-2 language modeling dataset.
-- Vaswani, A. et al. Attention Is All You Need (Transformer baseline).

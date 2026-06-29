@@ -47,7 +47,13 @@ class TransformerLM(nn.Module):
             batch_first=True,
             norm_first=True,
         )
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        # With pre-norm (norm_first=True), the encoder leaves its output stream
+        # un-normalised; a final LayerNorm (cf. GPT-2's ln_f) is required to keep
+        # the residual stream bounded before the tied projection, otherwise
+        # logits explode as depth grows.
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer, num_layers=num_layers, norm=nn.LayerNorm(d_model)
+        )
 
         # Output projection; tied to the input embedding like WONNText.
         self.output_proj = nn.Linear(d_model, vocab_size, bias=False)
