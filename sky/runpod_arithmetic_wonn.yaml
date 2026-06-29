@@ -27,7 +27,7 @@ run: |
   cd "$SKYP_TASK_WORKDIR"
   PYTHONPATH=src python -m wonntext.train_arithmetic \
       --data_dir data/arithmetic \
-      --checkpoint assets/checkpoints/wonntext_wikitext.pt \
+      --checkpoint assets/checkpoints/wonntext_wikitext.bin \
       --model wonn \
       --ch 256 \
       --heads 8 \
