@@ -141,6 +141,39 @@ If you hit Docker Hub rate limits, authenticate pulls in one of two ways:
      --env SKYPILOT_DOCKER_PASSWORD="$DOCKERHUB_TOKEN"
    ```
 
+## Two-digit addition fine-tuning
+
+A small reasoning task is used to compare the pretrained WONNText and
+Transformer checkpoints after fine-tuning. Each sample is a tokenized equation
+such as `12+34=46` with the answer digits masked; the model must predict only the
+answer tokens.
+
+```bash
+uv run --group data python scripts/prepare_arithmetic.py \
+    --out_dir data/arithmetic \
+    --tokenizer_path assets/wikitext/tokenizer.json
+```
+
+Run on RunPod:
+
+```bash
+# WONNText
+uv run --group cloud sky launch -c arithmetic-wonn sky/runpod_arithmetic_wonn.yaml
+
+# Transformer baseline
+uv run --group cloud sky launch -c arithmetic-transformer sky/runpod_arithmetic_transformer.yaml
+```
+
+### Results on held-out test set
+
+| Model | Token accuracy | Whole-answer accuracy |
+|---|---|---|
+| WONNText bidirectional | 99.71% | 99.38% |
+| Transformer baseline | 77.29% | 43.95% |
+
+The parameter-matched Transformer plateaus at roughly 44% whole-answer accuracy,
+while WONNText reaches near-perfect addition.
+
 ## Tests
 
 ```bash
