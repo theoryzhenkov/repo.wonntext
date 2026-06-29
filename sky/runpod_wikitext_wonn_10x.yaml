@@ -7,7 +7,7 @@ name: wonntext-wikitext-10x
 
 resources:
   cloud: runpod
-  accelerators: H100:1
+  accelerators: A100-80GB:1
   disk_size: 100
 
 workdir: .
