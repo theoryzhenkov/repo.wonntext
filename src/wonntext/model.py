@@ -136,6 +136,13 @@ class WONNText(nn.Module):
 
         theta = wrap_pm_pi(self.theta_init_sigma * torch.randn_like(omega))
 
+        # An all-ones attention mask (no padding, e.g. chunked corpus data) is a
+        # no-op but forces SDPA off the FlashAttention-2 fast path. Collapse it
+        # to None once here so all T*L attention passes can use the flash kernel.
+        # One sync per forward is negligible against the T*L attention calls.
+        if attention_mask is not None and bool(attention_mask.all()):
+            attention_mask = None
+
         thetas: list[list[torch.Tensor]] | None = [] if return_thetas else None
         es: list[list[torch.Tensor]] | None = [] if return_es else None
 
