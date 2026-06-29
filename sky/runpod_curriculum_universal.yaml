@@ -1,0 +1,71 @@
+# Universal Transformer (1 tied block x 6 steps, ~2.81M) full pipeline:
+# WikiText-2 pretrain -> two-stage arithmetic curriculum.
+# Param- AND FLOP-matched to WONNText T=8: the tightest control. WONN is itself a
+# weight-tied recurrent model (one WinfreeTextLayer applied T times); this is its
+# transformer twin (one encoder block applied num_steps times with shared weights).
+# If WONN beats this, the advantage is the oscillator dynamics specifically.
+
+name: curriculum-universal
+
+resources:
+  cloud: runpod
+  accelerators: L4:1
+  disk_size: 100
+
+workdir: .
+
+setup: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+
+  pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
+  pip install --no-cache-dir -r sky/requirements-runtime.txt
+
+  python scripts/prepare_wikitext.py \
+      --out_dir "$HOME/wikitext_data" \
+      --vocab_size 10000 \
+      --config wikitext-2-raw-v1 \
+      --tokenizer_path assets/wikitext/tokenizer.json
+
+  python scripts/prepare_arithmetic_curriculum.py \
+      --out_dir data/arithmetic_curriculum \
+      --tokenizer_path assets/wikitext/tokenizer.json
+
+run: |
+  set -e
+  cd "$SKYP_TASK_WORKDIR"
+
+  # Pretrain on WikiText-2.
+  PYTHONPATH=src python -m wonntext.train \
+      --data_dir "$HOME/wikitext_data" \
+      --model universal_transformer \
+      --d_model 232 --nhead 8 --num_steps 6 --d_ff 464 --gamma 0.1 \
+      --seq_len 256 --batchsize 32 --eval_batchsize 32 \
+      --epochs 50 --lr 5e-4 --optimizer adamw --weight_decay 0.01 \
+      --warmup_steps 200 --lr_min 1e-5 --amp true \
+      --clip_grad_norm 1.0 --eval_freq 5 --device auto \
+      --save_dir runs/pretrain --exp_name universal
+
+  # Stage 1: two-digit addition.
+  PYTHONPATH=src python -m wonntext.train_arithmetic \
+      --data_dir data/arithmetic_curriculum/stage1 \
+      --checkpoint runs/pretrain/universal/final.pt \
+      --model universal_transformer \
+      --d_model 232 --nhead 8 --num_steps 6 --d_ff 464 --gamma 0.1 \
+      --epochs 100 --batchsize 64 --eval_batchsize 256 \
+      --lr 1e-4 --optimizer adamw --weight_decay 0.01 \
+      --warmup_steps 100 --lr_min 1e-5 --amp true \
+      --clip_grad_norm 1.0 --eval_freq 10 --device auto \
+      --save_dir runs/curriculum --exp_name stage1_universal
+
+  # Stage 2: three-number +,-,*,/ (standard precedence).
+  PYTHONPATH=src python -m wonntext.train_arithmetic \
+      --data_dir data/arithmetic_curriculum/stage2 \
+      --checkpoint runs/curriculum/stage1_universal/final.pt \
+      --model universal_transformer \
+      --d_model 232 --nhead 8 --num_steps 6 --d_ff 464 --gamma 0.1 \
+      --epochs 50 --batchsize 64 --eval_batchsize 256 \
+      --lr 1e-4 --optimizer adamw --weight_decay 0.01 \
+      --warmup_steps 100 --lr_min 1e-5 --amp true \
+      --clip_grad_norm 1.0 --eval_freq 5 --device auto \
+      --save_dir runs/curriculum --exp_name stage2_universal
