@@ -7,7 +7,7 @@ name: wonntext-wikitext-10x
 
 resources:
   cloud: runpod
-  accelerators: A40:1
+  accelerators: H100:1
   disk_size: 100
 
 workdir: .
@@ -48,6 +48,7 @@ run: |
       --lr_min 1e-5 \
       --amp true \
       --grad_checkpoint true \
+      --winfree_mode parallel_scan \
       --clip_grad_norm 1.0 \
       --eval_freq 1 \
       --device auto \
