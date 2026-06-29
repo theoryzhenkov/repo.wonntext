@@ -41,6 +41,11 @@ run: |
       --batchsize 64 \
       --eval_batchsize 256 \
       --lr 1e-4 \
+      --optimizer adamw \
+      --weight_decay 0.01 \
+      --warmup_steps 100 \
+      --lr_min 1e-5 \
+      --amp true \
       --clip_grad_norm 1.0 \
       --eval_freq 10 \
       --device auto \
@@ -61,6 +66,11 @@ run: |
       --batchsize 64 \
       --eval_batchsize 256 \
       --lr 1e-4 \
+      --optimizer adamw \
+      --weight_decay 0.01 \
+      --warmup_steps 100 \
+      --lr_min 1e-5 \
+      --amp true \
       --clip_grad_norm 1.0 \
       --eval_freq 10 \
       --device auto \

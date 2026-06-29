@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 import torch
@@ -36,7 +37,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batchsize", type=int, default=64)
     parser.add_argument("--eval_batchsize", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--weight_decay", type=float, default=0.0)
+    parser.add_argument("--weight_decay", type=float, default=0.01)
+    parser.add_argument("--optimizer", type=str, choices=["adamw", "adam"], default="adamw")
+    parser.add_argument("--warmup_steps", type=int, default=0)
+    parser.add_argument("--lr_min", type=float, default=0.0)
+    parser.add_argument("--amp", type=str2bool, default=False)
     parser.add_argument("--clip_grad_norm", type=float, default=1.0)
 
     parser.add_argument(
@@ -121,6 +126,7 @@ def evaluate(
     model: torch.nn.Module,
     loader: torch.utils.data.DataLoader,
     device: torch.device,
+    amp: bool = False,
 ) -> Metrics:
     model.eval()
 
@@ -136,7 +142,8 @@ def evaluate(
         labels = batch["labels"].to(device)
         answer_mask = batch["answer_mask"].to(device)
 
-        output = model(input_ids, attention_mask=attention_mask, labels=labels)
+        with torch.autocast("cuda", dtype=torch.bfloat16, enabled=amp):
+            output = model(input_ids, attention_mask=attention_mask, labels=labels)
         loss = output["loss"]
 
         logits = output["logits"]
@@ -161,6 +168,33 @@ def evaluate(
     }
 
 
+def _make_optimizer(args: argparse.Namespace, model: torch.nn.Module) -> torch.optim.Optimizer:
+    if args.optimizer == "adamw":
+        return torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    return torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
+
+def _make_scheduler(
+    optimizer: torch.optim.Optimizer,
+    lr: float,
+    lr_min: float,
+    warmup_steps: int,
+    total_steps: int,
+) -> torch.optim.lr_scheduler.LambdaLR:
+    warmup_steps = max(0, min(warmup_steps, total_steps))
+    decay_steps = max(1, total_steps - warmup_steps)
+
+    def lr_lambda(step: int) -> float:
+        if warmup_steps > 0 and step < warmup_steps:
+            return (step + 1) / warmup_steps
+        decay_step = step - warmup_steps
+        progress = min(1.0, decay_step / decay_steps)
+        cosine = 0.5 * (1.0 + math.cos(math.pi * progress))
+        return (lr_min + (lr - lr_min) * cosine) / lr
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+
 def main() -> None:
     args = parse_args()
     seed_everything(args.seed, deterministic=args.deterministic)
@@ -169,6 +203,10 @@ def main() -> None:
     if device_str == "auto":
         device_str = "cuda" if torch.cuda.is_available() else "cpu"
     device = torch.device(device_str)
+
+    if torch.cuda.is_available():
+        torch.set_float32_matmul_precision("high")
+        torch.backends.cudnn.benchmark = True
 
     save_dir = Path(args.save_dir) / args.exp_name
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -250,11 +288,15 @@ def main() -> None:
     num_params = sum(p.numel() for p in model.parameters())
     print(f"Model parameters: {num_params:,}")
 
-    optimizer = torch.optim.Adam(
-        model.parameters(),
+    optimizer = _make_optimizer(args, model)
+    scheduler = _make_scheduler(
+        optimizer=optimizer,
         lr=args.lr,
-        weight_decay=args.weight_decay,
+        lr_min=args.lr_min,
+        warmup_steps=args.warmup_steps,
+        total_steps=args.epochs * len(train_loader),
     )
+    scaler = torch.amp.GradScaler("cuda", enabled=args.amp and device.type == "cuda")
 
     best_val_acc = 0.0
     best_state: dict | None = None
@@ -269,24 +311,29 @@ def main() -> None:
             labels = batch["labels"].to(device)
 
             optimizer.zero_grad(set_to_none=True)
-            output = model(
-                input_ids,
-                attention_mask=attention_mask,
-                labels=labels,
-            )
-            loss = output["loss"]
-            loss.backward()
+            with torch.autocast("cuda", dtype=torch.bfloat16, enabled=args.amp):
+                output = model(
+                    input_ids,
+                    attention_mask=attention_mask,
+                    labels=labels,
+                )
+                loss = output["loss"]
+
+            scaler.scale(loss).backward()
 
             if args.clip_grad_norm > 0.0:
+                scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(
                     model.parameters(), args.clip_grad_norm
                 )
 
-            optimizer.step()
+            scaler.step(optimizer)
+            scaler.update()
+            scheduler.step()
             pbar.set_postfix(loss=f"{loss.item():.4f}")
 
         if args.eval_freq > 0 and (epoch + 1) % args.eval_freq == 0:
-            val_metrics = evaluate(model, val_loader, device)
+            val_metrics = evaluate(model, val_loader, device, amp=args.amp)
             print(
                 f"[eval] loss={val_metrics['loss']:.4f} "
                 f"ppl={val_metrics['ppl']:.2f} "
@@ -300,7 +347,7 @@ def main() -> None:
     if best_state is not None:
         model.load_state_dict(best_state)
 
-    test_metrics = evaluate(model, test_loader, device)
+    test_metrics = evaluate(model, test_loader, device, amp=args.amp)
     print(
         f"[test] loss={test_metrics['loss']:.4f} "
         f"ppl={test_metrics['ppl']:.2f} "

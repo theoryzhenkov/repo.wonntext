@@ -28,15 +28,20 @@ run: |
   PYTHONPATH=src python -m wonntext.train \
       --data_dir "$HOME/wikitext_data" \
       --seq_len 256 \
-      --batchsize 32 \
-      --eval_batchsize 64 \
+      --batchsize 64 \
+      --eval_batchsize 128 \
       --model transformer \
       --d_model 768 \
       --nhead 8 \
       --num_layers 4 \
       --d_ff 2048 \
       --epochs 50 \
-      --lr 1e-3 \
+      --lr 1e-4 \
+      --optimizer adamw \
+      --weight_decay 0.01 \
+      --warmup_steps 500 \
+      --lr_min 1e-5 \
+      --amp true \
       --clip_grad_norm 1.0 \
       --eval_freq 1 \
       --device auto \

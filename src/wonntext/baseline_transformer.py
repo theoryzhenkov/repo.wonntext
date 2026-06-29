@@ -45,7 +45,7 @@ class TransformerLM(nn.Module):
             dim_feedforward=d_ff,
             dropout=dropout,
             batch_first=True,
-            norm_first=False,
+            norm_first=True,
         )
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
