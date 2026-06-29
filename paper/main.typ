@@ -264,3 +264,33 @@ bi-directional attention and random $Omega$ initialisation.
   [causal attention], [5.1900], [179.48], [20.60%],
   [Transformer baseline], [4.0758], [58.90], [30.29%],
 )
+
+== Numerical precision: WONNText requires fp32
+
+WONNText must be trained in full fp32. Its phase update is built from
+$sin$, $cos$, and $plus.minus pi$ wrapping; bf16's ~3-significant-digit
+mantissa imposes a *precision floor* on the phase, so the oscillator learns
+only partially and plateaus. The failure is silent: the loss descends smoothly
+and never diverges, it simply settles at a mediocre value rather than the
+near-zero loss the architecture reaches in fp32.
+
+We observed this on the two-digit addition stage of the curriculum. With bf16
+automatic mixed precision (AMP), WONNText reached only 61.6% token / 15.8%
+whole-answer accuracy ($"ppl" approx 2.75$) --- on a task it solves at 99.7% in
+fp32 (see Results). The fp32 re-run, identical in every other respect, recovered
+to roughly 90% token / 76% whole-answer accuracy and was still improving.
+
+#table(
+  columns: (auto, auto, auto, auto),
+  align: (left, right, right, right),
+  [*Precision*], [*Loss*], [*Token acc.*], [*Answer acc.*],
+  [bf16 AMP], [1.01], [61.6%], [15.8%],
+  [fp32], [$lt.eq 0.39$], [$gt.eq 90%$], [$gt.eq 76%$],
+)
+
+Transformers and the Universal Transformer are unaffected --- their logits are
+distributional rather than a continuous phase --- so AMP accelerates them while
+crippling WONNText. Any mixed-precision comparison between the two families is
+therefore invalid; all reported WONNText numbers use fp32. The bf16 floor
+barely affects fuzzy language-model pretraining loss but bites hard on
+exact-output tasks such as arithmetic.
