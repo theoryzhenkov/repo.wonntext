@@ -240,7 +240,7 @@ def main() -> None:
 
     if args.checkpoint is not None:
         ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
-        missing, unexpected = model.load_state_dict(ckpt, strict=True)
+        missing, unexpected = model.load_state_dict(ckpt, strict=False)
         if missing:
             print(f"Checkpoint missing keys: {missing}")
         if unexpected:
