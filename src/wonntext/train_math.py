@@ -158,6 +158,15 @@ def main() -> None:
 
     base_lrs = [g["lr"] for g in opt.param_groups]
 
+    out = Path(args.save_dir) / args.exp_name
+    out.mkdir(parents=True, exist_ok=True)
+    try:
+        from torch.utils.tensorboard import SummaryWriter
+        writer = SummaryWriter(str(out / "tb"))
+    except Exception as exc:
+        writer = None
+        print(f"tensorboard disabled: {exc}", flush=True)
+
     model.train()
     for step in range(args.steps):
         for g, base in zip(opt.param_groups, base_lrs, strict=True):
@@ -183,9 +192,16 @@ def main() -> None:
                 f"| extrap tok={e['token_acc']:.4f} ans={e['answer_acc']:.4f}",
                 flush=True,
             )
+            if writer is not None:
+                s = step + 1
+                writer.add_scalar("train/loss", float(loss), s)
+                writer.add_scalar("train/lr", opt.param_groups[0]["lr"], s)
+                writer.add_scalar("indist/token_acc", t["token_acc"], s)
+                writer.add_scalar("indist/answer_acc", t["answer_acc"], s)
+                writer.add_scalar("extrap/token_acc", e["token_acc"], s)
+                writer.add_scalar("extrap/answer_acc", e["answer_acc"], s)
+                writer.flush()
 
-    out = Path(args.save_dir) / args.exp_name
-    out.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), out / "final.pt")
     metrics = {
         "model": args.model, "params": n_params, "steps": args.steps,
@@ -193,6 +209,12 @@ def main() -> None:
         "extrapolation": evaluate(model, *extra, mask_id, pad_id, device, args.eval_batch),
     }
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2))
+    if writer is not None:
+        final_indist = metrics["in_distribution"]["answer_acc"]
+        final_extrap = metrics["extrapolation"]["answer_acc"]
+        writer.add_scalar("final/indist_answer_acc", final_indist, args.steps)
+        writer.add_scalar("final/extrap_answer_acc", final_extrap, args.steps)
+        writer.close()
     print(f"saved {out}/final.pt\n{json.dumps(metrics, indent=2)}", flush=True)
 
 
