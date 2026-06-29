@@ -58,7 +58,7 @@ def main() -> None:
     ap.add_argument("--gpus", type=float, default=1.0, help="GPUs per job")
     args = ap.parse_args()
 
-    with open(args.jobs) as f:
+    with Path(args.jobs).open() as f:
         jobs = json.load(f)
 
     ray.init(address="auto")
