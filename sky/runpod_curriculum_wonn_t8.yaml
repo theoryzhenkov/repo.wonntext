@@ -38,7 +38,7 @@ run: |
       --ch 256 --heads 8 --L 1 --T 8 \
       --seq_len 256 --batchsize 32 --eval_batchsize 32 \
       --epochs 50 --lr 1e-3 --optimizer adamw --weight_decay 0.01 \
-      --warmup_steps 200 --lr_min 1e-5 --amp true \
+      --warmup_steps 200 --lr_min 1e-5 --amp false \
       --clip_grad_norm 1.0 --eval_freq 5 --device auto \
       --save_dir runs/pretrain --exp_name wonn_t8
 
@@ -50,7 +50,7 @@ run: |
       --rope true --omega_as_token_embed true \
       --epochs 100 --batchsize 64 --eval_batchsize 256 \
       --lr 1e-4 --optimizer adamw --weight_decay 0.01 \
-      --warmup_steps 100 --lr_min 1e-5 --amp true \
+      --warmup_steps 100 --lr_min 1e-5 --amp false \
       --clip_grad_norm 1.0 --eval_freq 10 --device auto \
       --save_dir runs/curriculum --exp_name stage1_wonn_t8
 
@@ -62,6 +62,6 @@ run: |
       --rope true --omega_as_token_embed true \
       --epochs 50 --batchsize 64 --eval_batchsize 256 \
       --lr 1e-4 --optimizer adamw --weight_decay 0.01 \
-      --warmup_steps 100 --lr_min 1e-5 --amp true \
+      --warmup_steps 100 --lr_min 1e-5 --amp false \
       --clip_grad_norm 1.0 --eval_freq 5 --device auto \
       --save_dir runs/curriculum --exp_name stage2_wonn_t8

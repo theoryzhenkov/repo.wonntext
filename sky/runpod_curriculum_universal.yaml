@@ -42,7 +42,7 @@ run: |
       --d_model 232 --nhead 8 --num_steps 6 --d_ff 464 --gamma 0.1 \
       --seq_len 256 --batchsize 32 --eval_batchsize 32 \
       --epochs 50 --lr 5e-4 --optimizer adamw --weight_decay 0.01 \
-      --warmup_steps 200 --lr_min 1e-5 --amp true \
+      --warmup_steps 200 --lr_min 1e-5 --amp false \
       --clip_grad_norm 1.0 --eval_freq 5 --device auto \
       --save_dir runs/pretrain --exp_name universal
 
@@ -54,7 +54,7 @@ run: |
       --d_model 232 --nhead 8 --num_steps 6 --d_ff 464 --gamma 0.1 \
       --epochs 100 --batchsize 64 --eval_batchsize 256 \
       --lr 1e-4 --optimizer adamw --weight_decay 0.01 \
-      --warmup_steps 100 --lr_min 1e-5 --amp true \
+      --warmup_steps 100 --lr_min 1e-5 --amp false \
       --clip_grad_norm 1.0 --eval_freq 10 --device auto \
       --save_dir runs/curriculum --exp_name stage1_universal
 
@@ -66,6 +66,6 @@ run: |
       --d_model 232 --nhead 8 --num_steps 6 --d_ff 464 --gamma 0.1 \
       --epochs 50 --batchsize 64 --eval_batchsize 256 \
       --lr 1e-4 --optimizer adamw --weight_decay 0.01 \
-      --warmup_steps 100 --lr_min 1e-5 --amp true \
+      --warmup_steps 100 --lr_min 1e-5 --amp false \
       --clip_grad_norm 1.0 --eval_freq 5 --device auto \
       --save_dir runs/curriculum --exp_name stage2_universal
